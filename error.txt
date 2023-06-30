@@ -1,0 +1,16 @@
+Traceback (most recent call last):
+  File "/Users/aamir/Documents/personal_projects/Programming/whoop-sleep-dashboard/get_sleep_info.py", line 26, in <module>
+    token = whoop_session.fetch_token(
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/aamir/Documents/personal_projects/Programming/whoop-sleep-dashboard/env/lib/python3.11/site-packages/requests_oauthlib/oauth2_session.py", line 366, in fetch_token
+    self._client.parse_request_body_response(r.text, scope=self.scope)
+  File "/Users/aamir/Documents/personal_projects/Programming/whoop-sleep-dashboard/env/lib/python3.11/site-packages/oauthlib/oauth2/rfc6749/clients/base.py", line 427, in parse_request_body_response
+    self.token = parse_token_response(body, scope=scope)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/aamir/Documents/personal_projects/Programming/whoop-sleep-dashboard/env/lib/python3.11/site-packages/oauthlib/oauth2/rfc6749/parameters.py", line 441, in parse_token_response
+    validate_token_parameters(params)
+  File "/Users/aamir/Documents/personal_projects/Programming/whoop-sleep-dashboard/env/lib/python3.11/site-packages/oauthlib/oauth2/rfc6749/parameters.py", line 448, in validate_token_parameters
+    raise_from_error(params.get('error'), params)
+  File "/Users/aamir/Documents/personal_projects/Programming/whoop-sleep-dashboard/env/lib/python3.11/site-packages/oauthlib/oauth2/rfc6749/errors.py", line 399, in raise_from_error
+    raise cls(**kwargs)
+oauthlib.oauth2.rfc6749.errors.InvalidClientError: (invalid_client) Client authentication failed (e.g., unknown client, no client authentication included, or unsupported authentication method)
