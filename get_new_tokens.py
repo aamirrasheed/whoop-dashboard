@@ -2,6 +2,7 @@ import os
 import requests
 import random
 import json
+from datetime import datetime, timedelta, timezone
 
 from urllib.parse import parse_qs, urlparse
 
@@ -15,7 +16,7 @@ TOKEN_URL = "https://api.prod.whoop.com/oauth/oauth2/token"
 WHOOP_API_ENDPOINT = "https://api.prod.whoop.com/developer"
 SLEEP_DATA_URL = "/v1/activity/sleep"
 SCOPE = ["offline", "read:sleep", "read:workout", "read:recovery"]
-REDIRECT_URL = "https://aamir.me/"
+REDIRECT_URL = "https://www.aamir.me/"
 
 scope_string = " ".join(SCOPE)
 
@@ -97,17 +98,3 @@ print()
 refresh_token = response["refresh_token"]
 print("\nRefresh token:", refresh_token)
 print()
-
-# Step 3: Get sleep data using access token
-headers = {
-      "Authorization": f"Bearer {access_token}",
-}
-response = requests.get(WHOOP_API_ENDPOINT + SLEEP_DATA_URL, headers=headers)
-
-if response.status_code == 200:
-    data = response.json()
-    # # Process the response data here
-    # print("\nSleep Data:")
-    # print(json.dumps(data, indent=2))
-else:
-    print(f"\nRequest failed with status code {response.status_code}\n")

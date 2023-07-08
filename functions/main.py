@@ -1,9 +1,8 @@
 import requests
-import os
+import json
 
-from firebase_functions import https_fn, scheduler_fn
-from firebase_functions.params import SecretParam
-from google.cloud import secretmanager
+from firebase_functions import https_fn, scheduler_fn, pubsub_fn
+from google.cloud import secretmanager, pubsub
 
 from firebase_admin import initialize_app
 
@@ -16,27 +15,62 @@ WHOOP_CLIENT_SECRET_SECRET_NAME = "WHOOP_CLIENT_SECRET"
 WHOOP_ACCESS_TOKEN_SECRET_NAME = "WHOOP_ACCESS_TOKEN"
 WHOOP_REFRESH_TOKEN_SECRET_NAME = "WHOOP_REFRESH_TOKEN"
 VERSION_ID = "latest"
+PUBSUB_TOPIC_NAME = "whoop-webhook"
 
 initialize_app()
-# TODO: Need to handle when refresh_access_tokens is running at the same time as whoop_webhook
-# see this for help: https://stackoverflow.com/questions/49290380/how-do-you-avoid-a-possible-race-condition-with-firebase-cloud-functions
+initialize_app()
+
 @https_fn.on_request()
 def whoop_webhook(req: https_fn.Request) -> https_fn.Response:
-  # check that the headers for this request are correct with the client secret, otherwise reject
+  # TODO: check that the headers for this request are correct with the client secret, otherwise reject: https://developer.whoop.com/docs/developing/webhooks/#webhooks-security
+  req_body = req.json 
 
-  # use the access token located in secrets to GET sleep data within the last hour
+  # trigger update_data() via pub/sub
+  publisher = pubsub.PublisherClient()
+  message_data = {
+    'id': req_body["id"],
+    'type': req_body["type"]
+  }
 
-  # record sleep, workout, or recovery to Realtime Database
+  # Convert the message data to JSON string
+  message_data_str = json.dumps(message_data)
+
+  # Convert the message data string to bytes
+  message_data_bytes = message_data_str.encode('utf-8')
+
+  # Publish the message
+  topic_path = publisher.topic_path(PROJECT_ID, PUBSUB_TOPIC_NAME)
+  message_future = publisher.publish(topic_path, data=message_data_bytes)
+  message_future.result()
+
+  return https_fn.Response("Pubsub message sent")
+
+# may need to retry in order to do it successfully, incase of race condition with secrets being updated
+@pubsub_fn.on_message_published(topic="whoop-webhook")
+def update_data(event: pubsub_fn.CloudEvent[pubsub_fn.MessagePublishedData]):
+  # Get the `name` attribute of the PubSub message JSON body.
+  try:
+      data = event.data.message.json
+  except ValueError:
+      print("PubSub message was not JSON")
+      return
+  if data is None:
+      return
+  if "id" not in data:
+      print("No 'id' key")
+      return
+  if "type" not in data:
+      print("No 'type' key")
+      return
+  id = data["id"]
+  type = data["type"]
+  print("received data from pubsub topic whoop-webhook:", id, type)
+
+  # use the access token to GET relevant data
+
+  # calculate data
 
   # update Notion page
-
-  # return status 200
-
-  original = req.args.get("text")
-  if original is None:
-      return https_fn.Response("No text parameter provided", status=400)
-
-  return https_fn.Response(f"Hello world! Parameter = {original}")
 
 # We also need a function that regularly refreshes access tokens every 45 minutes or so
 @scheduler_fn.on_schedule(schedule="*/45 * * * *")
