@@ -8,7 +8,11 @@ WHOOP_API_ENDPOINT = "https://api.prod.whoop.com/developer"
 SLEEP_URL = "/v1/activity/sleep"
 WORKOUT_URL = "/v1/activity/workout"
 
-access_token = os.getenv("TEMP_WHOOP_ACCESS_TOKEN")
+WHOOP_ACCESS_TOKEN = os.getenv("TEMP_WHOOP_ACCESS_TOKEN")
+
+NOTION_API_ENDPOINT = "https://api.notion.com/v1/pages"
+NOTION_INTEGRATION_SECRET = os.getenv("NOTION_SECRET_FOR_WHOOP_INTEGRATION")
+NOTION_DATABASE_ID = os.getenv("NOTION_DATABASE_ID_FOR_WHOOP_INTEGRATION")
 
 def add_params_to_url(url: str, params: dict=None) -> str:
     if params is None:
@@ -23,7 +27,7 @@ def add_params_to_url(url: str, params: dict=None) -> str:
 def test_whoop_workout_api():
   # test workouts
   headers = {
-        "Authorization": f"Bearer {access_token}",
+        "Authorization": f"Bearer {WHOOP_ACCESS_TOKEN}",
   }
 
   # midnight 6 days ago - the last week's worth of data
@@ -58,7 +62,7 @@ def test_whoop_workout_api():
 def test_whoop_sleep_api():
   # Step 3: Get sleep data using access token
   headers = {
-        "Authorization": f"Bearer {access_token}",
+        "Authorization": f"Bearer {WHOOP_ACCESS_TOKEN}",
   }
 
   # all sleeps within the past 10 days = 10 nights of sleep
@@ -86,9 +90,56 @@ def test_whoop_sleep_api():
   print()
 
 def test_notion_api():
-   pass
+  print("adding sleep to notion")
+  sleeptime = 7.42
+  avg_sleep_payload = {
+     "parent": {"database_id": NOTION_DATABASE_ID},
+     "properties": {
+        "Stat": {
+           "title": [
+              {
+                 "text": {
+                    "content": "Average Sleep (last 10 days)"
+                 }
+              }
+           ]
+        },
+        "Value": {
+           "rich_text": [
+              {
+                 "text": {
+                    "content": str(sleeptime)
+                 }
+              }
+           ]
+        },
+        "Target": {
+           "rich_text": [
+              {
+                 "text": {
+                    "content": ">7.5 hours"
+                 }
+              }
+           ]
+        }
+     }
+  }
+  print("Creating sleep entry")
+  headers = {
+    "Authorization": f"Bearer {NOTION_INTEGRATION_SECRET}",
+    "Notion-Version": "2022-06-28",
+    "Content-Type": "application/json",
+  }
+
+  response = requests.post(
+    NOTION_API_ENDPOINT,
+    headers=headers,
+    data=json.dumps(avg_sleep_payload)
+  )
+  response.raise_for_status()
+  print("Finished creating sleep entry")
 
 if __name__ == "__main__":
   test_whoop_workout_api()
   test_whoop_sleep_api()
-  print()
+  test_notion_api()
