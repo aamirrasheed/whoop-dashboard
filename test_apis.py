@@ -2,6 +2,8 @@ import os
 import requests
 import json
 from datetime import datetime, timezone, timedelta, time
+from typing import Dict, Any, Optional
+from enum import Enum
 
 AUTHORIZATION_URL = "https://api.prod.whoop.com/oauth/oauth2/auth"
 WHOOP_API_ENDPOINT = "https://api.prod.whoop.com/developer"
@@ -10,9 +12,25 @@ WORKOUT_URL = "/v1/activity/workout"
 
 WHOOP_ACCESS_TOKEN = os.getenv("TEMP_WHOOP_ACCESS_TOKEN")
 
-NOTION_API_ENDPOINT = "https://api.notion.com/v1/pages"
 NOTION_INTEGRATION_SECRET = os.getenv("NOTION_SECRET_FOR_WHOOP_INTEGRATION")
 NOTION_DATABASE_ID = os.getenv("NOTION_DATABASE_ID_FOR_WHOOP_INTEGRATION")
+NOTION_PAGES_ENDPOINT = "https://api.notion.com/v1/pages"
+NOTION_QUERY_DATABASE_ENDPOINT = f"https://api.notion.com/v1/databases/{NOTION_DATABASE_ID}/query"
+NOTION_API_HEADERS = {
+  "Authorization": f"Bearer {NOTION_INTEGRATION_SECRET}",
+  "Notion-Version": "2022-06-28",
+  "Content-Type": "application/json",
+}
+SLEEP_STAT_STRING = "Average Sleep (last 10 days)"
+SLEEP_TARGET_STRING = ">7.5 hrs"
+ZONE_2_STAT_STRING = "Zone 2 (last 7 days)"
+ZONE_2_TARGET_STRING = ">150 mins"
+ZONE_5_STAT_STRING = "Zone 5 (last 7 days)"
+ZONE_5_TARGET_STRING = ">16 mins"
+class STAT(Enum):
+    SLEEP = 1
+    ZONE_2 = 2
+    ZONE_5 = 3
 
 def add_params_to_url(url: str, params: dict=None) -> str:
     if params is None:
@@ -89,57 +107,98 @@ def test_whoop_sleep_api():
   print(f"avg sleep over the last {num_days} days:", avg_sleep_rounded)
   print()
 
-def test_notion_api():
-  print("adding sleep to notion")
-  sleeptime = 7.42
-  avg_sleep_payload = {
-     "parent": {"database_id": NOTION_DATABASE_ID},
-     "properties": {
-        "Stat": {
-           "title": [
-              {
-                 "text": {
-                    "content": "Average Sleep (last 10 days)"
-                 }
-              }
-           ]
-        },
-        "Value": {
-           "rich_text": [
-              {
-                 "text": {
-                    "content": str(sleeptime)
-                 }
-              }
-           ]
-        },
-        "Target": {
-           "rich_text": [
-              {
-                 "text": {
-                    "content": ">7.5 hours"
-                 }
-              }
-           ]
+def test_notion_api(stat_type: STAT, stat_value: float):
+    def create_db_entry_payload(stat: str, value: str, target:str):
+        return {
+            "parent": {"database_id": NOTION_DATABASE_ID},
+            "properties": {
+            "Stat": {
+                "title": [
+                    {
+                        "text": {
+                        "content": stat
+                        }
+                    }
+                ]
+            },
+            "Value": {
+                "rich_text": [
+                    {
+                        "text": {
+                        "content": value 
+                        }
+                    }
+                ]
+            },
+            "Target": {
+                "rich_text": [
+                    {
+                        "text": {
+                        "content": target
+                        }
+                    }
+                ]
+            }
+            }
         }
-     }
-  }
-  print("Creating sleep entry")
-  headers = {
-    "Authorization": f"Bearer {NOTION_INTEGRATION_SECRET}",
-    "Notion-Version": "2022-06-28",
-    "Content-Type": "application/json",
-  }
 
-  response = requests.post(
-    NOTION_API_ENDPOINT,
-    headers=headers,
-    data=json.dumps(avg_sleep_payload)
-  )
-  response.raise_for_status()
-  print("Finished creating sleep entry")
+    def get_db_entry_by_stat(stat: str):
+        body = {"filter": {"property": "Stat", "title": {"equals": stat}}}
+        response = requests.post(
+            NOTION_QUERY_DATABASE_ENDPOINT,
+            headers=NOTION_API_HEADERS,
+            data=json.dumps(body),
+        )
+        response.raise_for_status()
+        response = response.json()
+        results = response["results"]
+        if len(results) > 0:
+            return results[0]
+        else:
+            return None
+
+    def update_db_entry(page_id: str, payload: Dict[str, Any]):
+        response = requests.patch(
+            NOTION_PAGES_ENDPOINT + f"/{page_id}",
+            headers=NOTION_API_HEADERS,
+            data=json.dumps(payload)
+        )
+        response.raise_for_status()
+        print("Finished updating sleep entry")
+
+    def create_db_entry(payload: Dict[str, Any]):
+        response = requests.post(
+            NOTION_PAGES_ENDPOINT,
+            headers=NOTION_API_HEADERS,
+            data=json.dumps(payload)
+        )
+        response.raise_for_status()
+        print("Finished creating sleep entry")
+
+    if stat_type == STAT.SLEEP:
+        stat_string = SLEEP_STAT_STRING
+        target_string = SLEEP_TARGET_STRING
+    elif stat_type == STAT.ZONE_2:
+        stat_string = ZONE_2_STAT_STRING
+        target_string = ZONE_2_TARGET_STRING
+    elif stat_type == STAT.ZONE_5:
+        stat_string = ZONE_5_STAT_STRING
+        target_string = ZONE_5_TARGET_STRING
+    else:
+        raise ValueError(f"Unknown stat_type argument: {stat_type}")
+
+
+    payload = create_db_entry_payload(stat_string, str(stat_value), target_string)
+    existing_entry = get_db_entry_by_stat(stat_string)
+
+    if existing_entry:
+        update_db_entry(existing_entry["id"], payload)
+    else:
+        create_db_entry(payload)
+
+    
 
 if __name__ == "__main__":
-  test_whoop_workout_api()
-  test_whoop_sleep_api()
-  test_notion_api()
+    # test_whoop_workout_api()
+    # test_whoop_sleep_api()
+    test_notion_api(STAT.SLEEP, 7.55)
