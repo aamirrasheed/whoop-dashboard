@@ -88,7 +88,8 @@ def test_whoop_sleep_api():
 
     # all sleeps within the past 10 days = 10 nights of sleep
     num_days = 10
-    start_date_utc = datetime.combine(datetime.now(timezone.utc), time.min) - timedelta(num_days - 1)
+    start_date_utc = datetime.combine(datetime.now(), time.min) - timedelta(num_days - 1)
+    print("start date: ", start_date_utc)
     start_date_z = start_date_utc.isoformat() + 'Z'
     sleep_query_params = {
         "limit": "25",
@@ -103,6 +104,7 @@ def test_whoop_sleep_api():
     else:
         print(f"\nRequest failed with status code {response.status_code}\n")
     
+    print(json.dumps(data, indent=2))
     sleep_times = [x["score"]["stage_summary"]["total_in_bed_time_milli"] for x in data["records"] if not x["nap"]]
     print(sleep_times)
     total_sleep_hrs = sum(sleep_times) / 1000 / 60 / 60

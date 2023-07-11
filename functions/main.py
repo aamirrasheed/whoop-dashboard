@@ -23,8 +23,8 @@ This function receives Whoop webhook updates (ie sleep updated, workout updated)
 Whoop's API will continually ping this webhook unless a 200 response is sent back quickly, so
 this function triggers a pubsub job that triggers the other functions
 """
-# TODO: retry in case of race condition with secrets being updated
-# Potential TODO: If this function takes too long, Whoop may retry this webhook. Solution: Delegate work via pubsub
+# Future TODO: retry in case of race condition with secrets being updated
+# Future potential TODO: If this function takes too long, Whoop may retry this webhook. Solution: Delegate work via pubsub
 @https_fn.on_request()
 def whoop_webhook(req: https_fn.Request) -> https_fn.Response:
     # get relevant secrets
@@ -40,41 +40,52 @@ def whoop_webhook(req: https_fn.Request) -> https_fn.Response:
     notion_database_id = client.access_secret_version(request={"name": notion_database_id_resource_name}).payload.data.decode("UTF-8")
 
     # check if client sent correct headers - otherwise, it's not Whoop
-    # signature = req.headers["x-whoop-signature"]
-    # timestamp = req.headers["x-whoop-signature-timestamp"]
-    # if not whoop.verify_headers(whoop_client_secret, signature, timestamp, req.get_data()):
-    #     print("Whoop webhook headers incorrect, ignoring request.")
-    #     return
+    signature = req.headers["x-whoop-signature"]
+    timestamp = req.headers["x-whoop-signature-timestamp"]
+    print("whoop webhook incoming signature")
+    print(signature)
+    print("whoop webhook incoming signature timestamp")
+    print(timestamp)
+    print("raw request body")
+    print(req.get_data())
+    if not whoop.verify_headers(whoop_client_secret, signature, timestamp, req.get_data()):
+        print("Whoop webhook headers incorrect, ignoring request.")
+        return
 
     # calculate and update stat in Notion
     type = req.json["type"]
     if "sleep" in type:
         avg_sleep_stat = whoop.calculate_sleep_stats(whoop_access_token)
-        notion.update_stat(notion.STAT_TYPE.SLEEP, avg_sleep_stat, notion_integration_secret, notion_database_id)
+        notion.update_stat(notion.STAT_TYPE.SLEEP, str(avg_sleep_stat), notion_integration_secret, notion_database_id)
     elif "workout" in type:
         zone_2_stat, zone_5_stat = whoop.calculate_workout_stats(whoop_access_token)
-        notion.update_stat(notion.STAT_TYPE.ZONE_2, zone_2_stat, notion_integration_secret, notion_database_id)
-        notion.update_stat(notion.STAT_TYPE.ZONE_5, zone_5_stat, notion_integration_secret, notion_database_id)
+        notion.update_stat(notion.STAT_TYPE.ZONE_2, str(zone_2_stat), notion_integration_secret, notion_database_id)
+        notion.update_stat(notion.STAT_TYPE.ZONE_5, str(zone_5_stat), notion_integration_secret, notion_database_id)
 
     return https_fn.Response("Successful")
 
-# TODO: retry in case of race condition with secrets being updated
+# Future TODO: retry in case of race condition with secrets being updated
 @https_fn.on_request()
 @scheduler_fn.on_schedule(schedule="every day 23:37")
 def reconcile_stats(event: scheduler_fn.ScheduledEvent) -> None:
-    # use the access token to get and calculate relevant data
+    # get relevant secrets
     client = secretmanager.SecretManagerServiceClient()
     whoop_access_token_resource_name = client.secret_path(PROJECT_ID, WHOOP_ACCESS_TOKEN_SECRET_NAME) + "/versions/latest"
+    notion_integration_secret_resource_name = client.secret_path(PROJECT_ID, NOTION_INTEGRATION_SECRET_SECRET_NAME) + "/versions/latest"
+    notion_database_id_resource_name = client.secret_path(PROJECT_ID, NOTION_DATABASE_ID_SECRET_NAME) + "/versions/latest"
+
     whoop_access_token = client.access_secret_version(request={"name": whoop_access_token_resource_name}).payload.data.decode("UTF-8")
+    notion_integration_secret = client.access_secret_version(request={"name": notion_integration_secret_resource_name}).payload.data.decode("UTF-8")
+    notion_database_id = client.access_secret_version(request={"name": notion_database_id_resource_name}).payload.data.decode("UTF-8")
 
     # calculate and update sleep stats in Notion
     avg_sleep_stat = whoop.calculate_sleep_stats(whoop_access_token)
-    notion.update_stat(notion.STAT_TYPE.SLEEP, avg_sleep_stat)
+    notion.update_stat(notion.STAT_TYPE.SLEEP, str(avg_sleep_stat))
 
     # calculate and update zone2/zone5 stats in Notion
     zone_2_stat, zone_5_stat = whoop.calculate_workout_stats(whoop_access_token)
-    notion.update_stat(notion.STAT_TYPE.ZONE_2, zone_2_stat)
-    notion.update_stat(notion.STAT_TYPE.ZONE_5, zone_5_stat)
+    notion.update_stat(notion.STAT_TYPE.ZONE_2, str(zone_2_stat), notion_integration_secret, notion_database_id)
+    notion.update_stat(notion.STAT_TYPE.ZONE_5, str(zone_5_stat), notion_integration_secret, notion_database_id)
 
 """
 This function refreshes the whoop access and refres tokens

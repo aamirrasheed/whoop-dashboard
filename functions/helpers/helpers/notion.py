@@ -16,8 +16,10 @@ class STAT_TYPE(Enum):
     ZONE_2 = 2
     ZONE_5 = 3
 
-
-def update_stat(stat_type: STAT_TYPE, stat_value: float, integration_secret: str, database_id: str):
+"""
+Function that updates row on selected Notion Dashboard
+"""
+def update_stat(stat_type: STAT_TYPE, stat_value: str, integration_secret: str, database_id: str):
     if stat_type == STAT_TYPE.SLEEP:
         stat_string = SLEEP_STAT_STRING
         target_string = SLEEP_TARGET_STRING
@@ -30,7 +32,7 @@ def update_stat(stat_type: STAT_TYPE, stat_value: float, integration_secret: str
     else:
         raise ValueError(f"Unknown stat_type argument: {stat_type}")
 
-    payload = _create_db_entry_payload(stat_string, str(stat_value), target_string, database_id)
+    payload = _create_db_entry_payload(stat_string, stat_value, target_string, database_id)
     existing_entry = _get_db_entry_by_stat(stat_string, integration_secret, database_id)
 
     if existing_entry:
@@ -40,6 +42,9 @@ def update_stat(stat_type: STAT_TYPE, stat_value: float, integration_secret: str
     
     print("Finished updating notion")
 
+"""
+Function that creates the payload to update a specific page within a database
+"""
 def _create_db_entry_payload(stat: str, value: str, target :str, database_id: str):
     return {
         "parent": {"database_id": database_id},
@@ -74,6 +79,9 @@ def _create_db_entry_payload(stat: str, value: str, target :str, database_id: st
         }
     }
 
+"""
+Function that searches and returns the db row where "name" column matches `stat`
+"""
 def _get_db_entry_by_stat(stat: str, integration_secret: str, database_id: str):
     body = {"filter": {"property": "Stat", "title": {"equals": stat}}}
     response = requests.post(
@@ -89,6 +97,9 @@ def _get_db_entry_by_stat(stat: str, integration_secret: str, database_id: str):
     else:
         return None
 
+"""
+Function that updates the db row that contains `page_id` as "name" column
+"""
 def _update_db_entry(page_id: str, payload: Dict[str, Any], integration_secret:str):
     response = requests.patch(
         NOTION_PAGES_ENDPOINT + f"/{page_id}",
@@ -97,6 +108,9 @@ def _update_db_entry(page_id: str, payload: Dict[str, Any], integration_secret:s
     )
     response.raise_for_status()
 
+"""
+Function that creates the db row with the updated stat
+"""
 def _create_db_entry(payload: Dict[str, Any], integration_secret: str):
     response = requests.post(
         NOTION_PAGES_ENDPOINT,
@@ -105,6 +119,9 @@ def _create_db_entry(payload: Dict[str, Any], integration_secret: str):
     )
     response.raise_for_status()
 
+"""
+Function that generates headers for Notion API requests
+"""
 def _construct_headers(integration_secret: str):
     return {
         "Authorization": f"Bearer {integration_secret}",
@@ -112,5 +129,8 @@ def _construct_headers(integration_secret: str):
         "Content-Type": "application/json",
     }
 
+"""
+Function that generates endpoint for specific database within Notion API
+"""
 def _construct_database_endpoint(database_id: str):
     return f"https://api.notion.com/v1/databases/{database_id}/query"
