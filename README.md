@@ -5,7 +5,7 @@ This project displays the following statistics from WHOOP in a Notion database:
 2. Total Zone 2 cardio over the last 7 days
 3. Total Zone 5 cardio over the last 7 days
 
-![Sleep Dashboard Screenshot](./sleep_dashboard.png)
+![Sleep Dashboard Screenshot](./health_dashboard_screenshot.png)
 
 # Steps to running the project
 1. Create a Firebase project with the Blaze pricing plan to enable Cloud Functions.
@@ -38,3 +38,6 @@ desired statistics.
 `functions/main.py` contains the Firebase Cloud Functions. This file contains all code that interacts with Google services (Firebase Cloud Functions, Google Cloud Secret Manager)
 
 `functions/helpers` is a local Python package that contains two helper files, `notion.py` and `whoop.py`. All code that interacts with each of WHOOP's and Notion's API is contained in these files.
+
+# Acknowledgements
+A big thank you to Gordie White's [whoop-order-ingestion](https://github.com/gordie3/whoop-order-ingestion) project which informed the technical approach to this project.
