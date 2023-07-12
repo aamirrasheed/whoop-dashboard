@@ -1,3 +1,8 @@
+"""
+This file implements the signature check that verifies that incoming webhook 
+requests come from WHOOP.
+"""
+
 import os
 import hmac
 import hashlib

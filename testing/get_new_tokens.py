@@ -1,3 +1,16 @@
+"""
+As of 7-12-23, WHOOP's API uses the OAuth2.0 protocol, which is geared towards
+apps that request WHOOP data on behalf of its users. It makes a lot of sense for
+WHOOP because those are the type of projects they're expecting to support.
+
+Unfortunately, this isn't ideal for personal projects such as this one. To access
+our own data, we need to go through the three-step OAuth2.0 handshake, which is
+what this script implements.
+
+The resulting access tokens expire within an hour, so it's convenient to
+periodically re-run this script during the course of development of the app.
+
+"""
 import os
 import requests
 import random

@@ -1,3 +1,9 @@
+"""
+This file assists with testing the WHOOP and Notion APIs. All sensitive info are
+stored as environment variables - you'll need to set them on your local machine
+to use this script. See the root directory's README.md for more info.
+"""
+
 import os
 import requests
 import json

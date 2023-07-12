@@ -1,3 +1,9 @@
+"""
+This script allows the user to test the Google Secret Manager. You'll need to 
+install the gcloud cli to use this file correctly. See the root directory's
+README.md for more info.
+"""
+
 import requests
 from google.cloud import secretmanager
 
