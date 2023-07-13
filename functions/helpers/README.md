@@ -1,0 +1,1 @@
+Why create a separate package for helper functions? It's a limitation with Firebase Cloud functions as they're implemented right now. As of 7-12-23, helper files outside of `main.py` aren't picked up and when deploying the functions to the cloud. This is a workaraound: All helper functions in a local python package referenced in `requirements.txt`. 
